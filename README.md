@@ -1,13 +1,52 @@
 # CTFSystem
- 
-Here the Capture the Flag system for the RUG Honours Deepening project will be built.
 
-A system that can automatically take submissions of flags, give hints for finding flags, and grade based on the description of finding a flag.
+Capture the Flag system for the RUG Honours Deepening project: automatic flag submission, hints, and grading (including optional description-based grading).
 
-## Frontend
+## Setup and links
+
+**Use the xs2event environment and see database setup and all URLs:**  
+**[SETUP_AND_LINKS.md](SETUP_AND_LINKS.md)**
+
+- **API (local):** http://localhost:8000  
+- **Docs (Swagger):** http://localhost:8000/docs  
+- **Database:** `backend/ctf.db` (SQLite), created by `python scripts/init_db.py`  
+- **Default admin:** username `admin`, password from `backend/.env` (default `admin`)
 
 ## Backend
 
-- Python
-- OpenAPI/fastAPI
-- REST
+- Python, FastAPI, OpenAPI, SQLite
+- Run (with xs2event venv): `cd backend && uvicorn main:app --reload --port 8000`
+
+## Who can use the platform
+
+**Players (students/participants)** use the same frontend to:
+- **Register** and **log in**
+- View the **dashboard**: live leaderboard and list of challenges
+- Open a **challenge**: read description, **submit flags**, and **unlock hints**
+- See their **progress** (points and solved count)
+
+**Admins** (organisers) log in with an admin account and get an extra **Admin** section to manage challenges, grade manual submissions, view stats, and upload VM configs.
+
+## Mock data (see how it looks)
+
+To populate the app with sample challenges, hints, and demo players (so the leaderboard and challenge list look real):
+
+```bash
+cd CTFSystem/backend
+source ../../xs2event/bin/activate   # or from projects root
+PYTHONPATH=. python scripts/seed_mock_data.py
+```
+
+This adds:
+- **5 challenges** (warmup, web, crypto, forensics) with descriptions and hints
+- **3 demo players:** `alice` / `bob` / `charlie` with passwords `player1` / `player2` / `player3`
+- **Sample submissions** so the leaderboard shows scores
+
+Then open http://localhost:5173: you’ll see the leaderboard and challenges. Log in as `alice` (password `player1`) to try submitting flags and viewing hints.
+
+## Frontend
+
+- React (Vite + TypeScript) in `frontend/`
+- **Run:** `cd frontend && npm install && npm run dev` → http://localhost:5173
+- Player: Dashboard (leaderboard, challenges), challenge detail (submit flag, hints), login/register
+- Admin: Stats, challenges CRUD, submissions grading, VM config upload (login as `admin` to see Admin link)
