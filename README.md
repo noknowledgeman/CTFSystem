@@ -13,8 +13,7 @@ Capture the Flag system for the RUG Honours Deepening project: automatic flag su
 
 ## Setup and links
 
-**Use the xs2event environment and see database setup and all URLs:**  
-**[SETUP_AND_LINKS.md](SETUP_AND_LINKS.md)**
+**Database setup and all URLs:** **[SETUP_AND_LINKS.md](SETUP_AND_LINKS.md)**
 
 - **API (local):** http://localhost:8000  
 - **Docs (Swagger):** http://localhost:8000/docs  
@@ -24,7 +23,7 @@ Capture the Flag system for the RUG Honours Deepening project: automatic flag su
 ## Backend
 
 - Python, FastAPI, OpenAPI, SQLite
-- Run (with xs2event venv): `cd backend && uvicorn main:app --reload --port 8000`
+- Run: `cd backend && uvicorn main:app --reload --port 8000`
 
 ## Who can use the platform
 
@@ -42,7 +41,7 @@ To populate the app with sample challenges, hints, and demo players (so the lead
 
 ```bash
 cd CTFSystem/backend
-source ../../xs2event/bin/activate   # or from projects root
+# Activate your Python virtual environment, then:
 PYTHONPATH=. python scripts/seed_mock_data.py
 ```
 

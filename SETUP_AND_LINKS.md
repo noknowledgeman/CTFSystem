@@ -1,16 +1,12 @@
 # CTF System – Setup and Links
 
-## Use the xs2event environment
+## Environment
 
-From the **projects** root (`/Users/Artiom/Documents/projects`):
-
-```bash
-source xs2event/bin/activate
-```
-
-Then install CTF backend dependencies once (if not already installed):
+Use a Python 3.11+ virtual environment:
 
 ```bash
+python -m venv venv
+source venv/bin/activate   # or on Windows: venv\Scripts\activate
 cd CTFSystem/backend
 pip install -r requirements.txt
 ```
@@ -25,14 +21,7 @@ pip install -r requirements.txt
    - `DEFAULT_ADMIN_PASSWORD=admin`
 
 2. **Create database and default admin**  
-   With xs2event env activated and from `CTFSystem/backend`:
-
-   ```bash
-   cd /Users/Artiom/Documents/projects/CTFSystem/backend
-   python scripts/init_db.py
-   ```
-
-   Or from backend dir with `PYTHONPATH`:
+   From `CTFSystem/backend`:
 
    ```bash
    PYTHONPATH=. python scripts/init_db.py
@@ -45,15 +34,15 @@ pip install -r requirements.txt
    - Absolute (example): `/Users/Artiom/Documents/projects/CTFSystem/backend/ctf.db`
 
 4. **Optional: seed mock data** (challenges, hints, demo players, sample submissions)  
-   From `CTFSystem/backend` with xs2event env active:
+   From `CTFSystem/backend`:
    ```bash
    PYTHONPATH=. python scripts/seed_mock_data.py
    ```
-   Demo players: `alice` / `bob` / `charlie` with passwords `player1` / `player2` / `player3`. Use them to see the leaderboard and try submitting flags and hints.
+   Demo players: `alice` / `bob` / `charlie` with passwords `player1` / `player2` / `player3`.
 
 ## Run the backend
 
-From `CTFSystem/backend` (with xs2event env active):
+From `CTFSystem/backend`:
 
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
