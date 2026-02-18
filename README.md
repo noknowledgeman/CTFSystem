@@ -1,3 +1,12 @@
+# TODOS
+
+- Handle https
+- Handle env
+- Do unit testing
+- DO some wider system testing
+- Integration Testing with Mohsen
+- Write documentation
+
 # CTFSystem
 
 Capture the Flag system for the RUG Honours Deepening project: automatic flag submission, hints, and grading (including optional description-based grading).
