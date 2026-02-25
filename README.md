@@ -6,6 +6,7 @@
 - DO some wider system testing
 - Integration Testing with Mohsen
 - Write documentation
+- Handle CORS
 
 # CTFSystem
 
