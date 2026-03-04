@@ -17,9 +17,15 @@ Capture the Flag system for the RUG Honours Deepening project: automatic flag su
 **Database setup and all URLs:** **[SETUP_AND_LINKS.md](SETUP_AND_LINKS.md)**
 
 - **API (local):** http://localhost:8000  
-- **Docs (Swagger):** http://localhost:8000/docs  
+- **Swagger UI (API docs):** http://localhost:8000/docs — also at http://localhost:8000/swagger  
 - **Database:** `backend/ctf.db` (SQLite), created by `python scripts/init_db.py`  
 - **Default admin:** username `admin`, password from `backend/.env` (default `admin`)
+
+In the **course deployment**, the backend and frontend run on an **admin/CTF VM** inside the same virtualised environment as the student team VMs:
+
+- Each student **team VM** hosts one or more Docker-based challenges.
+- The **admin/CTF VM** runs CTFSystem (backend + frontend) and the automated validation scripts.
+- Students access the web UI from within the university network / VPN to view challenges, submit flags, and see the leaderboard.
 
 ## Backend
 
@@ -34,7 +40,20 @@ Capture the Flag system for the RUG Honours Deepening project: automatic flag su
 - Open a **challenge**: read description, **submit flags**, and **unlock hints**
 - See their **progress** (points and solved count)
 
-**Admins** (organisers) log in with an admin account and get an extra **Admin** section to manage challenges, grade manual submissions, view stats, and upload VM configs.
+**Admins** (organisers) log in with an admin account and get an extra **Admin** section to:
+
+- Manage challenges (including VM identifiers and grading mode).
+- Grade manual submissions and view stats.
+- Upload VM configs and trigger automated **deployment validation** for challenges.
+
+### Brightspace and automated validation
+
+The intended workflow for self-designed challenges is:
+
+1. **Students submit** their challenge in Brightspace as a ZIP containing Docker files, metadata (`challenge.yaml`), a write-up, and the flag.
+2. A helper step converts that ZIP into `ChallengeSubmissionMetadata` JSON.
+3. The admin/CTF VM calls `POST /api/admin/challenges/ingest` to register the challenge, its VM identifier, and deployment metadata.
+4. From the **Admin → VM** page, organisers can call `POST /api/admin/challenges/validate` (via the UI) to run healthchecks against each team VM and see which challenges are correctly deployed and reachable.
 
 ## Mock data (see how it looks)
 

@@ -86,3 +86,12 @@ export interface ProgressDetailed {
   by_category: ProgressByCategory[]
   points_over_time: PointsOverTimeEntry[]
 }
+
+export interface ValidationResult {
+  challenge_id: number
+  name: string
+  vm_identifier: string | null
+  status: string
+  error: string | null
+  checked_at: string
+}

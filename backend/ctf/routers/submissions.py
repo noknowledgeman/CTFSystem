@@ -1,28 +1,19 @@
 from typing import Annotated, List
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ctf.database import get_db
-from ctf.models import Challenge, Submission, User, HintUnlock, Hint
+from ctf.models import Submission, User
 from ctf.schemas import SubmissionCreate, SubmissionRead, SubmissionGradeUpdate
-from ctf.auth_utils import verify_password
 from ctf.dependencies import get_current_user, require_admin
-from sqlalchemy import func
+from ctf.services.submissions import (
+    apply_manual_grade,
+    create_submission_for_player,
+    grade_submission_llm,
+)
 
 router = APIRouter()
-
-
-def _hint_cost_for_challenge(db, user_id: int | None, team_id: int | None, challenge_id: int) -> int:
-    q = db.query(HintUnlock.hint_id).join(Hint, HintUnlock.hint_id == Hint.id).filter(Hint.challenge_id == challenge_id)
-    if team_id:
-        q = q.filter(HintUnlock.team_id == team_id)
-    else:
-        q = q.filter(HintUnlock.user_id == user_id)
-    unlocked_ids = [r[0] for r in q.distinct().all()]
-    if not unlocked_ids:
-        return 0
-    total = db.query(func.coalesce(func.sum(Hint.cost), 0)).filter(Hint.id.in_(unlocked_ids)).scalar()
-    return int(total or 0)
 
 
 @router.post("", response_model=SubmissionRead, status_code=201)
@@ -31,72 +22,10 @@ def submit_flag(
     db: Session = Depends(get_db),
     current_user: Annotated[User, Depends(get_current_user)] = None,
 ):
-    challenge = db.query(Challenge).filter(Challenge.id == data.challenge_id).first()
-    if not challenge:
-        raise HTTPException(status_code=404, detail="Challenge not found")
-
-    # Check already solved (user or team)
-    if current_user.team_id:
-        already = (
-            db.query(Submission)
-            .filter(
-                Submission.challenge_id == data.challenge_id,
-                Submission.team_id == current_user.team_id,
-                Submission.correct == True,
-            )
-            .first()
-        )
-    else:
-        already = (
-            db.query(Submission)
-            .filter(
-                Submission.challenge_id == data.challenge_id,
-                Submission.user_id == current_user.id,
-                Submission.correct == True,
-            )
-            .first()
-        )
-    if already:
-        return already
-
-    if challenge.grading_mode == "auto":
-        correct = verify_password(data.flag, challenge.flag_hash)
-        hint_deduction = _hint_cost_for_challenge(
-            db,
-            current_user.id if not current_user.team_id else None,
-            current_user.team_id,
-            data.challenge_id,
-        )
-        points = max(0, challenge.points - hint_deduction) if correct else 0
-        sub = Submission(
-            user_id=current_user.id if not current_user.team_id else None,
-            team_id=current_user.team_id,
-            challenge_id=data.challenge_id,
-            submitted_flag=data.flag,
-            description=data.description,
-            correct=correct,
-            status="accepted" if correct else "rejected",
-            assigned_points=points,
-        )
-        db.add(sub)
-        db.commit()
-        db.refresh(sub)
-        return sub
-    else:
-        # Manual grading: store and leave pending
-        sub = Submission(
-            user_id=current_user.id if not current_user.team_id else None,
-            team_id=current_user.team_id,
-            challenge_id=data.challenge_id,
-            submitted_flag=data.flag,
-            description=data.description,
-            correct=False,
-            status="pending",
-        )
-        db.add(sub)
-        db.commit()
-        db.refresh(sub)
-        return sub
+    try:
+        return create_submission_for_player(db=db, current_user=current_user, data=data)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("", response_model=List[SubmissionRead])
@@ -151,12 +80,33 @@ def grade_submission(
     sub = db.query(Submission).filter(Submission.id == submission_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Submission not found")
-    sub.status = data.status
-    if data.assigned_points is not None:
-        sub.assigned_points = data.assigned_points
-    if data.feedback is not None:
-        sub.feedback = data.feedback
-    sub.correct = data.status == "accepted"
+    apply_manual_grade(
+        sub,
+        status=data.status,
+        assigned_points=data.assigned_points,
+        feedback=data.feedback,
+    )
     db.commit()
     db.refresh(sub)
+    return sub
+
+
+@router.post("/{submission_id}/grade-llm", response_model=SubmissionRead)
+def grade_submission_with_llm_endpoint(
+    submission_id: int,
+    db: Session = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)] = None,
+):
+    """
+    Trigger LLM-based grading for a pending submission.
+
+    This endpoint is intended for use from the admin/CTF VM only.
+    """
+    try:
+        sub = grade_submission_llm(db=db, submission_id=submission_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        # Typically misconfiguration of OPENAI_API_KEY / model.
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return sub

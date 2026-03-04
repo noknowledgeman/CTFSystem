@@ -102,6 +102,8 @@ class ChallengeRead(ChallengeBase):
 
 class ChallengeReadWithSolved(ChallengeRead):
     solved: bool = False
+    # Optional list of hints attached to this challenge, used by the detail view.
+    hints: List["HintRead"] | None = None
 
 
 # ----- Hint -----
@@ -195,3 +197,39 @@ class EventStats(BaseModel):
     correct_submissions: int
     unique_solvers: int
     challenges_count: int
+
+
+# ----- Brightspace / challenge ingestion -----
+class ChallengeSubmissionMetadata(BaseModel):
+    """
+    Structured metadata derived from a Brightspace challenge submission.
+
+    This is intended to be populated from a standardised ZIP structure, e.g.:
+    - docker/            → Docker context or image build files
+    - challenge.yaml     → machine-readable metadata
+    - writeup.md         → human-readable solution steps
+    - flag.txt           → expected flag value
+    """
+
+    name: str
+    description: Optional[str] = None
+    category: str
+    difficulty: str
+    points: int = 0
+
+    # Flag information
+    flag: str
+    flag_format: Optional[str] = None
+
+    # Deployment information
+    docker_image: Optional[str] = None
+    docker_context_path: Optional[str] = None
+    exposed_port: Optional[int] = None
+    healthcheck_path: Optional[str] = None
+
+    # Target environment / ownership
+    vm_identifier: str
+    owner_team_name: Optional[str] = None
+
+    # Free-form extra metadata (kept for debugging / extension)
+    extra: Optional[dict] = None

@@ -63,6 +63,7 @@ def list_challenges(
                 created_at=c.created_at,
                 updated_at=c.updated_at,
                 solved=solved,
+                hints=c.hints,
             )
         )
     return result
@@ -114,6 +115,7 @@ def get_challenge(
         created_at=c.created_at,
         updated_at=c.updated_at,
         solved=solved,
+        hints=c.hints,
     )
 
 

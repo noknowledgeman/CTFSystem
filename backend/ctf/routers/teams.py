@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from ctf.database import get_db
 from ctf.models import Team, User
 from ctf.schemas import TeamRead
-from ctf.dependencies import get_current_user
+from ctf.dependencies import get_current_user, optional_user
 
 router = APIRouter()
 
@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("", response_model=List[TeamRead])
 def list_teams(
     db: Session = Depends(get_db),
-    _: Annotated[User, Depends(get_current_user)] = None,
+    _: Annotated[User | None, Depends(optional_user)] = None,
 ):
     """List all teams (for players to choose and join)."""
     return db.query(Team).order_by(Team.name).all()

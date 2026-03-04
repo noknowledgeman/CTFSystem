@@ -6,7 +6,16 @@ export default function AdminChallenges() {
   const [list, setList] = useState<Challenge[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
-  const [form, setForm] = useState<{ name: string; description: string; category: string; difficulty: string; points: string; flag: string }>({ name: '', description: '', category: 'web', difficulty: 'easy', points: '100', flag: '' })
+  const [form, setForm] = useState<{ name: string; description: string; category: string; difficulty: string; points: string; flag: string; vm_identifier: string; grading_mode: string }>({
+    name: '',
+    description: '',
+    category: 'web',
+    difficulty: 'easy',
+    points: '100',
+    flag: '',
+    vm_identifier: '',
+    grading_mode: 'auto',
+  })
   const [creating, setCreating] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [hintsByChallenge, setHintsByChallenge] = useState<Record<number, Hint[]>>({})
@@ -49,8 +58,19 @@ export default function AdminChallenges() {
         difficulty: form.difficulty,
         points: Number(form.points),
         flag: form.flag,
+        vm_identifier: form.vm_identifier || undefined,
+        grading_mode: form.grading_mode || 'auto',
       })
-      setForm({ name: '', description: '', category: 'web', difficulty: 'easy', points: '100', flag: '' })
+      setForm({
+        name: '',
+        description: '',
+        category: 'web',
+        difficulty: 'easy',
+        points: '100',
+        flag: '',
+        vm_identifier: '',
+        grading_mode: 'auto',
+      })
       load()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Create failed')
@@ -121,6 +141,21 @@ export default function AdminChallenges() {
           <input type="number" value={form.points} onChange={(e) => setForm((f) => ({ ...f, points: e.target.value }))} />
           <label>Flag (stored hashed)</label>
           <input type="text" value={form.flag} onChange={(e) => setForm((f) => ({ ...f, flag: e.target.value }))} required />
+          <label>VM identifier (team VM host/IP)</label>
+          <input
+            type="text"
+            value={form.vm_identifier}
+            onChange={(e) => setForm((f) => ({ ...f, vm_identifier: e.target.value }))}
+            placeholder="e.g. team1-vm or 10.0.0.5"
+          />
+          <label>Grading mode</label>
+          <select
+            value={form.grading_mode}
+            onChange={(e) => setForm((f) => ({ ...f, grading_mode: e.target.value }))}
+          >
+            <option value="auto">auto</option>
+            <option value="manual">manual</option>
+          </select>
           {err && <p className="error">{err}</p>}
           <button type="submit" className="btn primary" disabled={creating}>{creating ? 'Creating…' : 'Create'}</button>
         </form>

@@ -7,6 +7,7 @@ import type {
   TokenResponse,
   User,
   ProgressDetailed,
+  ValidationResult,
 } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
@@ -166,6 +167,8 @@ export const admin = {
         : r.json().then((e) => Promise.reject(new Error(e.detail))),
     );
   },
+  validateChallenges: () =>
+    api<ValidationResult[]>("/admin/challenges/validate", { method: "POST" }),
 };
 
 export interface TeamRead {

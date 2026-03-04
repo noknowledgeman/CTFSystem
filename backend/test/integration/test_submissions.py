@@ -1,8 +1,7 @@
-import pytest
 from fastapi.testclient import TestClient
 
 from ctf.auth_utils import hash_password
-from ctf.models import Challenge, Hint, HintUnlock, Submission
+from ctf.models import Submission
 from test.factories import (
     UserFactory,
     TeamFactory,
@@ -124,3 +123,23 @@ def test_unauthenticated_submit_returns_401(client: TestClient):
         json={"challenge_id": ch.id, "flag": "flag{x}"},
     )
     assert resp.status_code == 401
+
+
+def test_llm_mode_stores_pending_for_later_grading(client: TestClient, auth_headers, db_session):
+    user = UserFactory.create(username="solver")
+    ch = ChallengeFactory.create(points=100, grading_mode="llm")
+    resp = client.post(
+        "/api/submissions",
+        json={"challenge_id": ch.id, "flag": "FLAG{anything}", "description": "some explanation"},
+        headers=auth_headers(user),
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["status"] == "pending"
+    # Check DB
+    sub = db_session.query(Submission).filter(
+        Submission.challenge_id == ch.id,
+        Submission.user_id == user.id,
+    ).first()
+    assert sub is not None
+    assert sub.status == "pending"

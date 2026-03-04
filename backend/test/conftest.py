@@ -7,6 +7,7 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
@@ -25,8 +26,9 @@ def _clear_tables(session):
 def test_engine():
     """Fresh in-memory engine per test for isolation."""
     engine = create_engine(
-        "sqlite:///:memory:",
+        "sqlite://",
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
     yield engine
@@ -55,7 +57,16 @@ def _get_db_override(session):
 @pytest.fixture(scope="function")
 def client(db_session):
     """FastAPI test client. get_db is overridden to use the same session as factories."""
-    app.dependency_overrides[get_db] = lambda: _get_db_override(db_session)
+
+    def override_get_db():
+        # FastAPI expects a dependency that YIELDS the session, not a plain generator
+        # object. This wrapper ensures `db_session` itself is yielded correctly.
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
     try:
         with TestClient(app) as c:
             yield c

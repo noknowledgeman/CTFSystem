@@ -9,7 +9,7 @@ from ctf.auth_utils import hash_password, verify_password, create_access_token
 router = APIRouter()
 
 
-@router.post("/register", response_model=Token)
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(data: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(status_code=400, detail="Username already registered")
