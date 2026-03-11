@@ -11,6 +11,7 @@ import type {
 } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
+console.log(API_BASE)
 
 function getToken(): string | null {
   return localStorage.getItem("ctf_token");

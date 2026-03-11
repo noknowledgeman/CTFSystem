@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { AuthProvider, useAuth } from '../contexts/AuthContext'
+import { AuthProvider } from '../contexts/AuthContext'
 import * as api from '../api/client'
 import Teams from '../pages/Teams'
 import type { LeaderboardEntry } from '../types'
+import { vi } from 'vitest'
 
 // Helper wrapper to control auth state
 function AuthWrapper({ children }: { children: React.ReactNode }) {
@@ -17,9 +18,11 @@ vi.mock('../contexts/AuthContext', async () => {
   }
 })
 
+import { useAuth } from '../contexts/AuthContext'
+
 describe('Teams page', () => {
   it('shows a message when user is not logged in', () => {
-    ;(useAuth as unknown as vi.Mock).mockReturnValue({ user: null })
+    ;(useAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ user: null })
     render(
       <AuthWrapper>
         <Teams />
@@ -29,7 +32,7 @@ describe('Teams page', () => {
   })
 
   it('renders teams and leaderboard when user is logged in', async () => {
-    ;(useAuth as unknown as vi.Mock).mockReturnValue({
+    ;(useAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       user: { id: 1, username: 'alice', email: 'a@example.com', role: 'player', team_id: null, created_at: '', is_active: true },
       updateUser: vi.fn(),
     })

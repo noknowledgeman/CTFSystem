@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import * as api from '../api/client'
 import AdminVm from '../pages/admin/AdminVm'
+import { vi } from 'vitest'
 
 describe('AdminVm', () => {
   it('renders headings and triggers validation', async () => {

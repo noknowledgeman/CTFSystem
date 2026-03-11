@@ -9,3 +9,6 @@
 # Local env
 .env
 !.env.example
+
+nginx/certs/*.crt
+nginx/certs/*.key

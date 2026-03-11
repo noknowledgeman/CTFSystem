@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
@@ -25,20 +25,23 @@ app = FastAPI(
 # I can fix
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://localhost", "http://localhost" "http://ctf.my-portfolio.space"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(challenges.router, prefix="/api/challenges", tags=["challenges"])
-app.include_router(hints.router, prefix="/api/hints", tags=["hints"])
-app.include_router(submissions.router, prefix="/api/submissions", tags=["submissions"])
-app.include_router(leaderboard.router, prefix="/api/leaderboard", tags=["leaderboard"])
-app.include_router(teams.router, prefix="/api/teams", tags=["teams"])
-app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
-app.include_router(health.router, prefix="/api/health", tags=["health"])
 
+router = APIRouter()
+router.include_router(auth.router, prefix="/auth", tags=["auth"])
+router.include_router(challenges.router, prefix="/challenges", tags=["challenges"])
+router.include_router(hints.router, prefix="/hints", tags=["hints"])
+router.include_router(submissions.router, prefix="/submissions", tags=["submissions"])
+router.include_router(leaderboard.router, prefix="/leaderboard", tags=["leaderboard"])
+router.include_router(teams.router, prefix="/teams", tags=["teams"])
+router.include_router(admin.router, prefix="/admin", tags=["admin"])
+router.include_router(health.router, prefix="/health", tags=["health"])
+
+app.include_router(router, prefix="/api")
 
 @app.get("/")
 def root():

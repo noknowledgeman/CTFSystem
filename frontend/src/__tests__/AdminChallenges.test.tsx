@@ -1,7 +1,8 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import * as api from '../api/client'
 import AdminChallenges from '../pages/admin/AdminChallenges'
 import type { Challenge, Hint } from '../types'
+import { vi } from 'vitest'
 
 describe('AdminChallenges', () => {
   it('lists challenges and allows creating a new one', async () => {
