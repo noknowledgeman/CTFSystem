@@ -12,15 +12,35 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
+const TOKEN_KEY = 'ctf_token';
+const USER_KEY = 'ctf_user';
+
 function getToken(): string | null {
-  return localStorage.getItem("ctf_token");
+  return localStorage.getItem(TOKEN_KEY);
 }
+
+function clearAuth() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+async function parseJsonResponse(res: Response) {
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    const preview = text ? text.slice(0, 200).replace(/\s+/g, " ") : "";
+    throw new Error(`Expected JSON but got ${contentType || "unknown"}. ${preview ? `Response preview: ${preview}` : ""}`);
+  }
+  return res.json();
+}
+
+type ApiErrorPayload = { detail?: string; message?: string };
 
 export async function api<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  console.log(API_BASE);
+  const apiBase = API_BASE || "/api";
   const token = getToken();
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -29,13 +49,35 @@ export async function api<T>(
   if (token)
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${apiBase}${path}`, { ...options, headers });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || JSON.stringify(err));
+    let detail = res.statusText;
+    try {
+      if ((res.headers.get("content-type") || "").includes("application/json")) {
+        const err = (await res.json()) as unknown;
+        // FastAPI typically returns: { "detail": "..." }
+        const payload = err as ApiErrorPayload;
+        detail = payload.detail || payload.message || detail;
+      } else {
+        const text = await res.text().catch(() => "");
+        if (text) detail = text.slice(0, 300);
+      }
+    } catch {
+      // Keep statusText as fallback
+    }
+
+    // If the backend says the token is invalid, clear local storage so the user
+    // can log in again without having to manually refresh localStorage entries.
+    if (res.status === 401) {
+      const d = String(detail || '').toLowerCase();
+      if (d.includes('invalid token') || d.includes('not authenticated') || d.includes('unauthorized')) {
+        clearAuth();
+      }
+    }
+    throw new Error(detail);
   }
   if (res.status === 204) return undefined as T;
-  return res.json();
+  return parseJsonResponse(res);
 }
 
 // Auth
@@ -157,15 +199,30 @@ export const admin = {
   uploadVmConfig: (file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return fetch(`${API_BASE}/admin/vm-config`, {
+    const apiBase = API_BASE || "/api";
+    return fetch(`${apiBase}/admin/vm-config`, {
       method: "POST",
       headers: { Authorization: `Bearer ${getToken()}` },
       body: form,
-    }).then((r) =>
-      r.ok
-        ? r.json()
-        : r.json().then((e) => Promise.reject(new Error(e.detail))),
-    );
+    }).then(async (r) => {
+      if (!r.ok) {
+        let detail = r.statusText;
+        try {
+          if ((r.headers.get("content-type") || "").includes("application/json")) {
+            const e = (await r.json()) as unknown;
+            const payload = e as ApiErrorPayload;
+            detail = payload.detail || payload.message || detail;
+          } else {
+            const text = await r.text().catch(() => "");
+            if (text) detail = text.slice(0, 300);
+          }
+        } catch {
+          // keep statusText fallback
+        }
+        throw new Error(detail);
+      }
+      return parseJsonResponse(r);
+    });
   },
   validateChallenges: () =>
     api<ValidationResult[]>("/admin/challenges/validate", { method: "POST" }),
