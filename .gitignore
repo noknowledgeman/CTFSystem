@@ -15,5 +15,8 @@ secrets/
 data/
 *.db
 
+# The sample submission
+*.zip
+
 # Frontend/editor noise (if opened in same workspace)
 node_modules/
