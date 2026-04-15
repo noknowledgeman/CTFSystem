@@ -1,0 +1,9 @@
+name: "Path Traversal Intranet"
+description: "Corporate intranet with a path traversal flaw in the page parameter."
+flag: "CTF{s3cur3_y0ur_p4th5}"
+difficulty: "medium"
+port: 8080
+verify:
+  script: "verify.py"
+  language: "python"
+  timeout: 30

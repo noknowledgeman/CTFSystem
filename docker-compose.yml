@@ -1,0 +1,88 @@
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${CTFD_DB_NAME}
+      MYSQL_USER: ${CTFD_DB_USER}
+      MYSQL_PASSWORD: ${CTFD_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${CTFD_DB_ROOT_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ctfd:
+    image: ctfd/ctfd:3.7.1
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: mysql+pymysql://${CTFD_DB_USER}:${CTFD_DB_PASSWORD}@mariadb/${CTFD_DB_NAME}
+      REDIS_URL: redis://redis:6379
+      SECRET_KEY: ${CTFD_SECRET_KEY}
+      UPLOAD_FOLDER: /var/uploads
+      LOG_FOLDER: /var/log/CTFd
+      REVERSE_PROXY: "false"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ctfd_uploads:/var/uploads
+      - ctfd_logs:/var/log/CTFd
+    ports:
+      - "${CTFD_PORT}:8000"
+
+  validation-service:
+    build:
+      context: ./validation-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      VAL_DATABASE_URL: ${VAL_DATABASE_URL}
+      VAL_UPLOAD_DIR: /data/uploads
+      VAL_EXTRACT_DIR: /data/extracted
+      VAL_CTFD_BASE_URL: http://ctfd:8000
+      VAL_CTFD_API_TOKEN: ${VAL_CTFD_API_TOKEN}
+      VAL_SSH_PRIVATE_KEY_PATH: /run/keys/id_ed25519
+      VAL_SSH_USERNAME: ${VAL_SSH_USERNAME}
+      VAL_SSH_CONNECT_TIMEOUT: ${VAL_SSH_CONNECT_TIMEOUT}
+      VAL_SSH_COMMAND_TIMEOUT: ${VAL_SSH_COMMAND_TIMEOUT}
+      VAL_DEFAULT_VERIFY_TIMEOUT: ${VAL_DEFAULT_VERIFY_TIMEOUT}
+      VAL_GROUP_VM_MAP: ${VAL_GROUP_VM_MAP}
+    depends_on:
+      ctfd:
+        condition: service_started
+    volumes:
+      - validation_data:/data
+      - ${VAL_SSH_PRIVATE_KEY_FILE}:/run/keys/id_ed25519:ro
+    ports:
+      - "${VAL_API_PORT}:8080"
+
+volumes:
+  mariadb_data:
+  redis_data:
+  ctfd_uploads:
+  ctfd_logs:
+  validation_data:

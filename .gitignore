@@ -1,11 +1,19 @@
-# Python
-**/__pycache__/
-*.py[cod]
-*$py.class
-**/.pytest_cache/
-**/.coverage
-**/htmlcov/
-
-# Local env
 .env
-!.env.example
+.DS_Store
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+*.pyc
+*.pyo
+*.pyd
+
+# Runtime data
+validation-service/.venv/
+validation-service/.coverage
+validation-service/htmlcov/
+secrets/
+data/
+*.db
+
+# Frontend/editor noise (if opened in same workspace)
+node_modules/
