@@ -1,0 +1,23 @@
+name: "SSH Key Recovery"
+description: "Non-web challenge fixture validating SSH service reachability."
+flag: "CTF{non_web_flag}"
+difficulty: "difficult"
+verify:
+  script: "verify.sh"
+  language: "bash"
+  timeout: 45
+deployment:
+  remote_dir: "/home/student/challenge"
+services:
+  - name: "ssh_service"
+    protocol: "tcp"
+    host: "127.0.0.1"
+    port: 22
+validation_steps:
+  - type: "container_running"
+  - type: "service_check"
+    service: "ssh_service"
+  - type: "command"
+    command: "echo ssh-ok"
+    expect_contains: "ssh-ok"
+  - type: "verify_script"

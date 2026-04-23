@@ -1,0 +1,31 @@
+name: "Multi Step Data Breach"
+description: "Multi-step challenge fixture with HTTP and command assertions."
+flag: "CTF{multi_step_flag}"
+difficulty: "medium"
+verify:
+  script: "verify.py"
+  language: "python"
+  timeout: 60
+deployment:
+  remote_dir: "/home/student/challenge"
+services:
+  - name: "web"
+    protocol: "http"
+    host: "127.0.0.1"
+    port: 8080
+    path: "/health"
+    expected_status: 200
+  - name: "db"
+    protocol: "tcp"
+    host: "127.0.0.1"
+    port: 5432
+validation_steps:
+  - type: "container_running"
+  - type: "service_check"
+    service: "web"
+  - type: "service_check"
+    service: "db"
+  - type: "command"
+    command: "echo preflight-ok"
+    expect_contains: "preflight-ok"
+  - type: "verify_script"

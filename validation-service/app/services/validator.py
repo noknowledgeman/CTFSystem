@@ -8,8 +8,11 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.db.models import SubmissionRecord, SubmissionStatus, ValidationRunRecord
 from app.services.ctfd_client import CTFdClient
+from app.services.checks.handlers import ValidationStepExecutor
+from app.services.checks.models import StepOutcome
 from app.services.docker_checker import DockerChecker
 from app.services.script_runner import ScriptRunner
+from app.services.service_checker import ServiceChecker
 from app.services.ssh_service import SSHService
 
 
@@ -22,9 +25,17 @@ class ValidationOrchestrator:
             connect_timeout=settings.ssh_connect_timeout,
             command_timeout=settings.ssh_command_timeout,
         )
+        self.ssh = ssh
         self.docker_checker = DockerChecker(ssh=ssh)
+        self.service_checker = ServiceChecker(ssh=ssh)
         self.script_runner = ScriptRunner(ssh=ssh, default_timeout=settings.default_verify_timeout)
         self.ctfd_client = CTFdClient(base_url=settings.ctfd_base_url, api_token=settings.ctfd_api_token)
+        self.step_executor = ValidationStepExecutor(
+            ssh=self.ssh,
+            docker_checker=self.docker_checker,
+            service_checker=self.service_checker,
+            script_runner=self.script_runner,
+        )
 
     def validate_submission(self, db: Session, submission: SubmissionRecord) -> ValidationRunRecord:
         host = self._resolve_group_host(submission.group_id)
@@ -41,35 +52,41 @@ class ValidationOrchestrator:
         db.refresh(submission)
 
         try:
-            docker_ok, docker_details = self.docker_checker.check_containers_running(host, "/home/student/challenge")
-            run.docker_ok = docker_ok
-
-            port_ok, port_details = self.docker_checker.check_port_listening(host, submission.declared_port or 0)
-            run.port_ok = port_ok
-
             challenge = self._load_challenge_from_disk(submission.extracted_path)
-            verify_ok, verify_details = self.script_runner.run_verify_script(
-                host=host,
-                local_root=Path(submission.extracted_path),
-                verify=challenge.verify,
-                expected_flag=challenge.flag,
-            )
-            run.verify_ok = verify_ok
+            outcomes: list[StepOutcome] = []
+            for step in challenge.validation_steps:
+                outcome = self.step_executor.execute(
+                    host=host,
+                    challenge=challenge,
+                    local_root=Path(submission.extracted_path),
+                    step=step,
+                )
+                outcomes.append(outcome)
+
+            run.docker_ok = all(
+                outcome.ok for outcome in outcomes if outcome.step_type.startswith("container_running")
+            ) if any(outcome.step_type.startswith("container_running") for outcome in outcomes) else None
+            run.port_ok = all(
+                outcome.ok for outcome in outcomes if outcome.step_type.startswith("service_check")
+            ) if any(outcome.step_type.startswith("service_check") for outcome in outcomes) else None
+            run.verify_ok = all(
+                outcome.ok for outcome in outcomes if outcome.step_type == "verify_script"
+            ) if any(outcome.step_type == "verify_script" for outcome in outcomes) else None
 
             synced = False
-            if docker_ok and port_ok and verify_ok:
+            required_ok = all(outcome.ok for outcome in outcomes if outcome.required)
+            if required_ok:
                 self.ctfd_client.ensure_challenge(challenge)
                 synced = True
             run.ctfd_synced = synced
 
-            all_ok = docker_ok and port_ok and verify_ok and synced
+            all_ok = required_ok and synced
             run.status = SubmissionStatus.VALID if all_ok else SubmissionStatus.INVALID
             submission.status = run.status
             run.details = "\n\n".join(
                 [
-                    "Docker check:\n" + docker_details,
-                    "Port check:\n" + port_details,
-                    "Verify output:\n" + verify_details,
+                    f"[{idx}] {outcome.step_type} | required={outcome.required} | ok={outcome.ok}\n{outcome.details}"
+                    for idx, outcome in enumerate(outcomes, start=1)
                 ]
             )
         except Exception as exc:  # noqa: BLE001

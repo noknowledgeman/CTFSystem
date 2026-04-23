@@ -1,0 +1,9 @@
+name: "Path Traversal Intranet"
+description: "Simple web challenge fixture based on provided sample."
+flag: "CTF{demo_web_flag}"
+difficulty: "medium"
+port: 8080
+verify:
+  script: "verify.py"
+  language: "python"
+  timeout: 30

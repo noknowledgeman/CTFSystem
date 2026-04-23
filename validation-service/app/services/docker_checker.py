@@ -6,9 +6,14 @@ class DockerChecker:
         self.ssh = ssh
 
     def check_containers_running(self, host: str, remote_dir: str) -> tuple[bool, str]:
-        cmd = f"cd {remote_dir} && (docker compose ps --status running || docker-compose ps)"
+        cmd = (
+            f"cd {remote_dir} && "
+            "(docker compose ps --status running --format '{{.Name}} {{.State}}' "
+            "|| docker-compose ps)"
+        )
         result = self.ssh.run_command(host, cmd)
-        ok = result.exit_code == 0 and ("running" in result.stdout.lower() or "up" in result.stdout.lower())
+        stdout = result.stdout.lower()
+        ok = result.exit_code == 0 and ("running" in stdout or "up" in stdout)
         details = (result.stdout + "\n" + result.stderr).strip()
         return ok, details
 

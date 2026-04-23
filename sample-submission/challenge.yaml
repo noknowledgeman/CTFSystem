@@ -2,8 +2,21 @@ name: "Path Traversal Intranet"
 description: "Corporate intranet with a path traversal flaw in the page parameter."
 flag: "CTF{s3cur3_y0ur_p4th5}"
 difficulty: "medium"
-port: 8080
 verify:
   script: "verify.py"
   language: "python"
   timeout: 30
+deployment:
+  remote_dir: "/home/student/challenge"
+services:
+  - name: "web"
+    protocol: "http"
+    host: "127.0.0.1"
+    port: 8080
+    path: "/"
+    expected_status: 200
+validation_steps:
+  - type: "container_running"
+  - type: "service_check"
+    service: "web"
+  - type: "verify_script"

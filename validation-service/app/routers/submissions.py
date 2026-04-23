@@ -36,7 +36,7 @@ async def upload_submission(
         archive_path=str(processed.archive_path),
         extracted_path=str(Path(processed.extract_path)),
         challenge_name=processed.challenge.name,
-        declared_port=processed.challenge.port,
+        declared_port=processed.challenge.services[0].port,
         status=SubmissionStatus.UPLOADED,
     )
     db.add(submission)
