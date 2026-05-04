@@ -11,7 +11,13 @@ import yaml
 from app.models.challenge_yaml import ChallengeYaml
 
 
-REQUIRED_FILES = ("docker-compose.yml", "challenge.yaml")
+CHALLENGE_YAML = "challenge.yaml"
+COMPOSE_FILENAMES = (
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "compose.yaml",
+    "compose.yml",
+)
 OPTIONAL_WRITEUPS = ("writeup.md", "README.md", "writeup.txt")
 
 
@@ -65,10 +71,21 @@ class ZipProcessor:
             raise ValueError(f"challenge.yaml is invalid YAML: {exc}") from exc
         return ChallengeYaml.model_validate(data)
 
+    def _compose_file_at_root(self, root: Path) -> Path | None:
+        for name in COMPOSE_FILENAMES:
+            candidate = root / name
+            if candidate.is_file():
+                return candidate
+        return None
+
     def _validate_structure(self, root: Path, challenge: ChallengeYaml) -> None:
-        for file_name in REQUIRED_FILES:
-            if not (root / file_name).exists():
-                raise ValueError(f"Missing required file: {file_name}")
+        if not (root / CHALLENGE_YAML).is_file():
+            raise ValueError(f"Missing required file: {CHALLENGE_YAML}")
+        if self._compose_file_at_root(root) is None:
+            raise ValueError(
+                "Missing Docker Compose file at archive root. "
+                f"Expected one of: {', '.join(COMPOSE_FILENAMES)}"
+            )
 
         verify_path = root / challenge.verify.script
         if not verify_path.exists():
