@@ -1,0 +1,9 @@
+services:
+  ctf-challenge:
+    image: eh-ctf:9
+    container_name: eh-ctf
+    restart: unless-stopped
+    ports:
+      - "21:21"
+      - "8080:8080"
+      - "30000-30010:30000-30010"
