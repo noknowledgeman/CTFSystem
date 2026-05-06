@@ -52,7 +52,7 @@ class ValidationOrchestrator:
         db.refresh(submission)
 
         try:
-            challenge = self._load_challenge_from_disk(submission.extracted_path)
+            challenge = self.load_challenge_from_disk(submission.extracted_path)
             outcomes: list[StepOutcome] = []
             for step in challenge.validation_steps:
                 outcome = self.step_executor.execute(
@@ -75,13 +75,20 @@ class ValidationOrchestrator:
 
             synced = False
             required_ok = all(outcome.ok for outcome in outcomes if outcome.required)
-            if required_ok:
+            needs_manual_review = any(
+                outcome.required and outcome.step_type == "manual_review"
+                for outcome in outcomes
+            )
+            if required_ok and not needs_manual_review:
                 self.ctfd_client.ensure_challenge(challenge)
                 synced = True
             run.ctfd_synced = synced
 
-            all_ok = required_ok and synced
-            run.status = SubmissionStatus.VALID if all_ok else SubmissionStatus.INVALID
+            if required_ok and needs_manual_review:
+                run.status = SubmissionStatus.NEEDS_REVIEW
+            else:
+                all_ok = required_ok and synced
+                run.status = SubmissionStatus.VALID if all_ok else SubmissionStatus.INVALID
             submission.status = run.status
             run.details = "\n\n".join(
                 [
@@ -89,6 +96,8 @@ class ValidationOrchestrator:
                     for idx, outcome in enumerate(outcomes, start=1)
                 ]
             )
+            if required_ok and needs_manual_review:
+                run.details += "\n\nPending staff approval: required manual review step(s) present."
         except Exception as exc:  # noqa: BLE001
             run.status = SubmissionStatus.ERROR
             submission.status = SubmissionStatus.ERROR
@@ -107,7 +116,7 @@ class ValidationOrchestrator:
             raise ValueError(f"No VM mapping found for group_id: {group_id}")
         return self.settings.group_vm_map[group_id]
 
-    def _load_challenge_from_disk(self, extracted_path: str):
+    def load_challenge_from_disk(self, extracted_path: str):
         import yaml
         from app.models.challenge_yaml import ChallengeYaml
 

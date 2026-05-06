@@ -62,6 +62,12 @@ class ValidationStepExecutor:
             )
             return StepOutcome(step_type=step.type, ok=ok, details=details, required=step.required)
 
+        if step.type == "manual_review":
+            details = f"Manual review required: {step.instructions}"
+            if step.evidence_hint:
+                details = f"{details}\nEvidence hint: {step.evidence_hint}"
+            return StepOutcome(step_type=step.type, ok=True, details=details, required=step.required)
+
         return StepOutcome(step_type=step.type, ok=False, details=f"Unsupported step type: {step.type}", required=step.required)
 
     def _resolve_service(self, challenge: ChallengeYaml, step: ValidationStep) -> ServiceConfig:

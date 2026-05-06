@@ -45,6 +45,7 @@ def test_step_executor_orders_and_executes_steps():
                 {"type": "container_running"},
                 {"type": "service_check", "service": "web"},
                 {"type": "command", "command": "echo hello", "expect_contains": "hello"},
+                {"type": "manual_review", "instructions": "Check image contains expected flag dialog"},
                 {"type": "verify_script"},
             ],
         }
@@ -63,6 +64,7 @@ def test_step_executor_orders_and_executes_steps():
         "container_running",
         "service_check:web",
         "command",
+        "manual_review",
         "verify_script",
     ]
     assert all(out.ok for out in outcomes)

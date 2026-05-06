@@ -23,12 +23,14 @@ class ServiceConfig(BaseModel):
 
 
 class ValidationStep(BaseModel):
-    type: Literal["container_running", "service_check", "command", "verify_script"]
+    type: Literal["container_running", "service_check", "command", "verify_script", "manual_review"]
     service: str | None = None
     command: str | None = None
     expect_contains: str | None = None
     timeout: int | None = Field(default=None, ge=1, le=600)
     required: bool = True
+    instructions: str | None = None
+    evidence_hint: str | None = None
 
 
 class ChallengeYaml(BaseModel):
@@ -62,4 +64,6 @@ class ChallengeYaml(BaseModel):
                     raise ValueError("service_check steps must define `service`")
                 if step.service not in service_names:
                     raise ValueError(f"service_check references unknown service `{step.service}`")
+            if step.type == "manual_review" and (not step.instructions or not step.instructions.strip()):
+                raise ValueError("manual_review steps must define non-empty `instructions`")
         return self

@@ -4,7 +4,7 @@
 
 Create one ZIP containing:
 
-- `docker-compose.yml`
+- Compose file at ZIP root (`docker-compose.yml`, `docker-compose.yaml`, `compose.yml`, or `compose.yaml`)
 - `challenge.yaml`
 - verify script (`verify.py` or `verify.sh`)
 - write-up (`writeup.md`, `README.md`, or `writeup.txt`)
@@ -48,6 +48,23 @@ validation_steps:
   - type: "verify_script"
 ```
 
+### Manual review step example (for non-scriptable checks)
+
+Use this when part of the challenge must be verified by a human (for example, a flag shown only in an image/dialog):
+
+```yaml
+validation_steps:
+  - type: "container_running"
+  - type: "service_check"
+    service: "web"
+  - type: "manual_review"
+    instructions: "Open /proof/dialog.png and confirm the visible flag is CTF{example_flag}."
+    evidence_hint: "Attach screenshot of the image/dialog and the command used to produce it."
+  - type: "verify_script"
+```
+
+If `manual_review` is required, your run will be marked `needs_review` until staff approves it.
+
 ### Non-web example
 
 ```yaml
@@ -77,4 +94,5 @@ validation_steps:
 - Every declared `services[]` check must pass.
 - Verify script must exit with code `0` on success.
 - Verify output must include the expected flag value.
+- `verify.language` supports `python` and `bash`.
 - Use deterministic startup commands; avoid manual runtime setup.

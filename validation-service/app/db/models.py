@@ -10,6 +10,7 @@ from app.db.database import Base
 class SubmissionStatus(str, Enum):
     UPLOADED = "uploaded"
     VALIDATING = "validating"
+    NEEDS_REVIEW = "needs_review"
     VALID = "valid"
     INVALID = "invalid"
     ERROR = "error"

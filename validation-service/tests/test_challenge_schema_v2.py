@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import yaml
+import pytest
 
 from app.models.challenge_yaml import ChallengeYaml
 
@@ -47,3 +48,44 @@ def test_multi_step_fixture_schema_parses():
         "command",
         "verify_script",
     ]
+
+
+def test_manual_review_step_requires_instructions():
+    data = {
+        "name": "Manual",
+        "description": "Needs visual verification",
+        "flag": "CTF{manual}",
+        "difficulty": "medium",
+        "verify": {"script": "verify.sh", "language": "bash", "timeout": 30},
+        "services": [{"name": "web", "protocol": "http", "host": "127.0.0.1", "port": 8080}],
+        "validation_steps": [
+            {"type": "container_running"},
+            {"type": "manual_review"},
+        ],
+    }
+    with pytest.raises(ValueError, match="manual_review steps must define non-empty `instructions`"):
+        ChallengeYaml.model_validate(data)
+
+
+def test_manual_review_step_with_instructions_and_bash_verify_parses():
+    data = {
+        "name": "Manual",
+        "description": "Needs visual verification",
+        "flag": "CTF{manual}",
+        "difficulty": "medium",
+        "verify": {"script": "verify.sh", "language": "bash", "timeout": 30},
+        "services": [{"name": "web", "protocol": "http", "host": "127.0.0.1", "port": 8080}],
+        "validation_steps": [
+            {"type": "container_running"},
+            {
+                "type": "manual_review",
+                "instructions": "Confirm the dialog shown in the screenshot contains the flag.",
+                "evidence_hint": "Attach screenshot from /tmp/challenge/dialog.png",
+            },
+            {"type": "verify_script"},
+        ],
+    }
+    model = ChallengeYaml.model_validate(data)
+    assert model.verify.language == "bash"
+    assert model.validation_steps[1].type == "manual_review"
+    assert model.validation_steps[1].instructions is not None
