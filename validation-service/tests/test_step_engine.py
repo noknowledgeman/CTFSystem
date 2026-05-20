@@ -28,8 +28,8 @@ class DummyServiceChecker:
 
 
 class DummyScriptRunner:
-    def run_verify_script(self, host: str, local_root: Path, verify, expected_flag: str):
-        return True, f"verified {expected_flag}"
+    def run_verify_script(self, host: str, local_root: Path, verify):
+        return True, ""
 
 
 def test_step_executor_orders_and_executes_steps():

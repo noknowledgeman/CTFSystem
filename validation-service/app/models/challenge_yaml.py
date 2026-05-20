@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 class VerifyConfig(BaseModel):
     script: str = Field(min_length=1)
     language: Literal["python", "bash"]
+    dependencies: list[str] = Field(default_factory=list)
     timeout: int = Field(default=30, ge=1, le=300)
 
 

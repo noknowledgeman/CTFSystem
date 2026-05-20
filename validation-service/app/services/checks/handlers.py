@@ -54,13 +54,12 @@ class ValidationStepExecutor:
             return StepOutcome(step_type=step.type, ok=ok, details=output, required=step.required)
 
         if step.type == "verify_script":
-            ok, details = self.script_runner.run_verify_script(
+            ok, output = self.script_runner.run_verify_script(
                 host=host,
                 local_root=local_root,
                 verify=challenge.verify,
-                expected_flag=challenge.flag,
             )
-            return StepOutcome(step_type=step.type, ok=ok, details=details, required=step.required)
+            return StepOutcome(step_type=step.type, ok=ok, details=output, required=step.required)
 
         if step.type == "manual_review":
             details = f"Manual review required: {step.instructions}"
