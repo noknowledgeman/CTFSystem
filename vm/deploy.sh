@@ -8,7 +8,9 @@ PROJECTS_DIR="${1:-../samples}"
 ENV_FILE="${2:-../.env}"
 VM_DIR="$(pwd)/vms"
 SSH_KEY="../secrets/id_ed25519"
-SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5"
+SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=20"
+IP_BASE="192.168.122"
+IP_START=100
 
 mkdir -p "$VM_DIR"
 
@@ -24,24 +26,30 @@ trap cleanup EXIT
 
 declare -A GROUP_MAP
 
+derive_mac() {
+  echo "$1" | md5sum | sed 's/\(..\)\(..\)\(..\)\(..\)\(..\).*/52:54:00:\3:\4:\5/'
+}
+
 boot_vm() {
   local name="$1"
+  local ip="$2"
+  local mac="$3"
   local vm_img="$VM_DIR/$name.qcow2"
 
-  # Clone base image
   log "Cloning base image -> $vm_img"
   qemu-img create -f qcow2 -b "$BASE_IMAGE" -F qcow2 "$vm_img"
 
-  # Generate a deterministic MAC from the name so we can query DHCP later
-  local mac
-  mac=$(echo "$name" | md5sum | sed 's/\(..\)\(..\)\(..\)\(..\)\(..\).*/52:54:00:\3:\4:\5/')
+  # Register static DHCP entry so VM always gets this IP
+  sudo virsh net-update default delete ip-dhcp-host \
+    "<host mac='$mac'/>" --live --config 2>/dev/null || true
+  sudo virsh net-update default add ip-dhcp-host \
+    "<host mac='$mac' ip='$ip'/>" --live --config
 
-  # Boot VM in background
-  log "Starting qemu for $name (mac=$mac)"
+  log "Starting qemu for $name (mac=$mac ip=$ip)"
   qemu-system-x86_64 \
     -cpu host \
     -machine q35,accel=kvm \
-    -m 2048 \
+    -m 4096 \
     -smp 2 \
     -nographic \
     -netdev id=net0,type=bridge,br=virbr0 \
@@ -56,35 +64,15 @@ boot_vm() {
   echo "$qpid"
 }
 
-get_ip_for_mac() {
-  local mac="$1"
-  local ip=""
-  local attempts=0
-
-  while [[ -z "$ip" && $attempts -lt 30 ]]; do
-    ip=$(sudo virsh net-dhcp-leases default 2>/dev/null \
-      | grep -i "$mac" \
-      | awk '{print $5}' \
-      | cut -d'/' -f1)
-    if [[ -z "$ip" ]]; then
-      log "  IP poll attempt $attempts/30 for $mac..."
-      sleep 2
-      attempts=$((attempts + 1))
-    fi
-  done
-
-  echo "$ip"
-}
-
 wait_for_ssh() {
   local ip="$1"
   local attempts=0
 
   while ! ssh $SSH_OPTS -i "$SSH_KEY" root@"$ip" true 2>/dev/null; do
-    log "  SSH attempt $attempts/30 on $ip..."
-    sleep 2
-    attempts=$((attempts+1))
-    if [[ $attempts -gt 30 ]]; then
+    log "  SSH attempt $attempts/60 on $ip..."
+    sleep 5
+    attempts=$((attempts + 1))
+    if [[ $attempts -gt 60 ]]; then
       echo "Timeout waiting for SSH on $ip" >&2
       return 1
     fi
@@ -96,52 +84,52 @@ copy_and_run() {
   local dir="$2"
   local ip="$3"
 
-  # Copy project files into VM
   ssh $SSH_OPTS -i "$SSH_KEY" root@"$ip" "mkdir -p /root/$name"
   scp -r $SSH_OPTS -i "$SSH_KEY" "$dir/." "root@$ip:/root/$name/"
 
-  # Run docker compose inside VM
-  ssh $SSH_OPTS -i "$SSH_KEY" root@"$ip" \
-    "cd /root/$name && docker compose up -d"
+  local attempts=0
+  until ssh $SSH_OPTS -i "$SSH_KEY" root@"$ip" \
+    "cd /root/$name && docker compose pull && docker compose up -d"; do
+    attempts=$((attempts + 1))
+    if [[ $attempts -ge 5 ]]; then
+      echo "docker compose pull/up failed after 5 attempts on $name" >&2
+      return 1
+    fi
+    log "Compose failed, retrying ($attempts/5)..."
+    sleep 5
+  done
 }
 
 # --- Main ---
 
 declare -A PIDS
-declare -A MACS
+declare -A IPS
 declare -A NAMES_TO_DIRS
 
-# Boot all VMs
+index=0
 for dir in "$PROJECTS_DIR"/*/; do
   [[ -f "$dir/compose.yaml" || -f "$dir/compose.yml" || -f "$dir/docker-compose.yaml" || -f "$dir/docker-compose.yml" ]] || continue
   name=$(basename "$dir")
+  ip="$IP_BASE.$((IP_START + index))"
+  mac=$(derive_mac "$name")
 
-  log "Booting VM for: $name"
-  pid=$(boot_vm "$name")
-  mac=$(echo "$name" | md5sum | sed 's/\(..\)\(..\)\(..\)\(..\)\(..\).*/52:54:00:\3:\4:\5/')
+  log "Booting VM for: $name (ip=$ip mac=$mac)"
+  pid=$(boot_vm "$name" "$ip" "$mac")
 
   PIDS[$name]=$pid
-  MACS[$name]=$mac
+  IPS[$name]=$ip
   NAMES_TO_DIRS[$name]=$dir
+  index=$((index + 1))
 done
 
-# Wait for each VM, copy files, run compose
+# Deploy each VM
 for name in "${!PIDS[@]}"; do
   dir="${NAMES_TO_DIRS[$name]}"
-  mac="${MACS[$name]}"
-
-  log "Waiting for IP: $name ($mac)"
-  ip=$(get_ip_for_mac "$mac")
-
-  if [[ -z "$ip" ]]; then
-    echo "Failed to get IP for $name, skipping" >&2
-    continue
-  fi
-
-  log "$name -> $ip"
+  ip="${IPS[$name]}"
 
   log "Waiting for SSH: $name ($ip)"
   wait_for_ssh "$ip"
+  sleep 3
 
   log "Copying files and starting compose: $name"
   copy_and_run "$name" "$dir" "$ip"
@@ -163,6 +151,10 @@ for name in "${!GROUP_MAP[@]}"; do
 done
 json+="}"
 
-echo "VAL_GROUP_VM_MAP=$json" > "$ENV_FILE"
+if grep -q "^VAL_GROUP_VM_MAP=" "$ENV_FILE" 2>/dev/null; then
+  sed -i "s|^VAL_GROUP_VM_MAP=.*|VAL_GROUP_VM_MAP=$json|" "$ENV_FILE"
+else
+  echo "VAL_GROUP_VM_MAP=$json" >> "$ENV_FILE"
+fi
 echo "Written to $ENV_FILE"
-cat "$ENV_FILE"
+grep "VAL_GROUP_VM_MAP" "$ENV_FILE"

@@ -41,3 +41,7 @@ Set these variables in `.env`:
 - `VAL_SSH_USERNAME`: account on student VMs.
 
 See `docs/student-guide.md`, `docs/vm-setup.md`, and `docs/port-forwarding.md` for operational details.
+
+- What if steps require human interv
+- Signal human intervention
+- Add bash

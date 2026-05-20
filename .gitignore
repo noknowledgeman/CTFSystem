@@ -19,5 +19,10 @@ data/
 # The sample submission
 *.zip
 
+# the testing vms
+*.qcow2
+vm/vms/
+secrets/*
+
 # Frontend/editor noise (if opened in same workspace)
 node_modules/
