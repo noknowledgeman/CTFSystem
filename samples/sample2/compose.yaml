@@ -1,0 +1,30 @@
+services:
+  web:
+    build: ./web
+    container_name: intranet_web
+    ports:
+      - "80:8080"
+    depends_on:
+      - db
+    networks:
+      - intranet_network
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: intranet_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: lWNb^q6kef$$Yi2ol6ifghRh@*Gn&xPDl
+      POSTGRES_DB: postgres
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - intranet_network
+    restart: unless-stopped
+
+networks:
+  intranet_network:
+    driver: bridge

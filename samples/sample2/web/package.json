@@ -1,0 +1,16 @@
+{
+	"name": "corporate-intranet",
+	"version": "1.0.0",
+	"description": "Corporate Intranet Portal",
+	"type": "module",
+	"main": "server.js",
+	"author": "IT Department",
+	"private": true,
+	"scripts": {
+		"start": "node server.js"
+	},
+	"dependencies": {
+		"express": "^5.1.0"
+	},
+	"notes": "Database configuration is stored in db-config.js"
+}

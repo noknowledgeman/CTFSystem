@@ -1,0 +1,29 @@
+name: "Path traversal database credentials"
+description: "A corporate intranet web portal (Node.js) with a backend PostgreSQL database. The challenge involves discovering exposed services, exploiting a Path Traversal vulnerability to retrieve database credentials, and accessing the database to retrieve the flag."
+flag: "EH2025{39aa9ec8a0380e8639656c891f3c3bb9411ce6744bdfad557dd342eac4cf3430}"
+difficulty: "medium"
+verify: 
+  script: "verify.sh"
+  language: "bash"
+  dependencies: [postgresql-client]
+  timeout: 30
+deployment: 
+  remote_dir: "/root/sample2"
+services:
+  - name: "web"
+    protocol: "http"
+    host: "127.0.0.1"
+    port: 80
+    path: "/"
+    expected_status: 200
+  - name: "db"
+    protocol: "tcp"
+    host: "127.0.0.1"
+    port: 5432
+validation_steps:
+  - type: "container_running"
+  - type: "service_check"
+    service: "web"
+  - type: "service_check"
+    service: "db"
+  - type: "verify_script"
