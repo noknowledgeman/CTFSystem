@@ -1,0 +1,1 @@
+curl -u admin:jhz-tfv1deg5betMAV http://localhost:8000/admin

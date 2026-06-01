@@ -79,6 +79,20 @@ services:
       - ${VAL_SSH_PRIVATE_KEY_FILE}:/run/keys/id_ed25519:ro
     ports:
       - "${VAL_API_PORT}:8080"
+    networks:
+      default: {}
+      vmnet:
+        ipv4_address: 192.168.122.20
+
+networks:
+  vmnet:
+    driver: macvlan
+    driver_opts:
+      parent: "virbr0"
+    ipam:
+      config:
+        - subnet: 192.168.122.0/24
+          gateway: 192.168.122.1
 
 volumes:
   mariadb_data:

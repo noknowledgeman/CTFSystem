@@ -1,0 +1,24 @@
+name: "Admin Login FastApi"
+description: "In this CTF Challenge we have a FastAPI application that has an admin endpoint protected with Basic Auth. The admin username and password are set in a configuration dictionary in the application. The developers of the application created a debug endpoint so they could easily see what the current configurations are but they were a bit silly and left this endpoint enabled in production. This allowed the hacker to easily find the admin password and access the admin endpoint to retrieve the flag."
+flag: "EH2025{869ef2ce413a81a376706cd339f59b2a1a83dfd5eacc5a1ad41f2744bb6e0261}"
+difficulty: "easy"
+verify:
+  script: "verify.sh"
+  language: "bash"
+  timeout: 30
+  dependencies:
+    - curl
+deployment:
+  remote_dir: "/root/sample3"
+services:
+  - name: "web"
+    protocol: "http"
+    host: "127.0.0.1"
+    port: 8000
+    path: "/"
+    expected_status: 200
+validation_steps:
+  - type: "container_running"
+  - type: "service_check"
+    service: "web"
+  - type: "verify_script"

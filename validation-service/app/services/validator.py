@@ -79,10 +79,10 @@ class ValidationOrchestrator:
                 outcome.required and outcome.step_type == "manual_review"
                 for outcome in outcomes
             )
-            if required_ok and not needs_manual_review:
-                self.ctfd_client.ensure_challenge(challenge)
-                synced = True
-            run.ctfd_synced = synced
+            # if required_ok and not needs_manual_review:
+            #     self.ctfd_client.ensure_challenge(challenge)
+            #     synced = True
+            # run.ctfd_synced = synced
 
             if required_ok and needs_manual_review:
                 run.status = SubmissionStatus.NEEDS_REVIEW
