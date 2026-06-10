@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+</head>
+<body>
+  <h2>Login</h2>
+  {% if error %}<p>{{ error }}</p>{% endif %}
+  <form method="POST">
+    {% csrf_token %}
+    <input type="text" name="username" value="admin" readonly><br>
+    <input type="password" name="password" placeholder="https://www.youtube.com/watch?v=gjq6jwgSk64 Avengers vs WHO???"><br>
+    <button type="submit">Login to dashboard page</button>
+  </form>
+</body>
+</html>

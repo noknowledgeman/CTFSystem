@@ -1,82 +1,21 @@
 #!/bin/bash
+# Prepare phase: boot each challenge VM, load its docker images (pull registry
+# images + build local ones) into the VM's qcow2 disk, then power it off.
+# Deploy reboots those disks offline. One bad sample does NOT abort the rest.
 
-set -e
+set -u
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib.sh"
 
-# --- Config ---
-BASE_IMAGE="/home/os1to/Honours/DProj/vm/base.qcow2"
 PROJECTS_DIR="${1:-../samples}"
-VM_DIR="$(pwd)/vms"
-SSH_KEY="../secrets/id_ed25519"
-SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=20"
-IP_BASE="192.168.122"
-IP_START=100
-STATE_FILE="$VM_DIR/state.env"
-
 mkdir -p "$VM_DIR"
 
-log() { echo "[$(date '+%H:%M:%S')] $*" >&2; }
-
-cleanup() {
-  if [[ $? -ne 0 ]]; then
-    log "Error — killing QEMU processes..."
-    sudo pkill -f qemu-system-x86_64 2>/dev/null || true
-  fi
-}
-trap cleanup EXIT
-
-derive_mac() {
-  echo "$1" | md5sum | sed 's/\(..\)\(..\)\(..\)\(..\)\(..\).*/52:54:00:\3:\4:\5/'
-}
-
-boot_vm() {
-  local name="$1"
-  local ip="$2"
-  local mac="$3"
-  local vm_img="$VM_DIR/$name.qcow2"
-
-  log "Cloning base image -> $vm_img"
-  qemu-img create -f qcow2 -b "$BASE_IMAGE" -F qcow2 "$vm_img"
-
-  sudo virsh net-update default delete ip-dhcp-host \
-    "<host mac='$mac'/>" --live --config 2>/dev/null || true
-  sudo virsh net-update default add ip-dhcp-host \
-    "<host mac='$mac' ip='$ip'/>" --live --config
-
-  log "Starting qemu for $name (mac=$mac ip=$ip)"
-  qemu-system-x86_64 \
-    -cpu host \
-    -machine q35,accel=kvm \
-    -m 4096 \
-    -smp 2 \
-    -nographic \
-    -netdev id=net0,type=bridge,br=virbr0 \
-    -device virtio-net-pci,netdev=net0,mac="$mac" \
-    -drive if=virtio,format=qcow2,file="$vm_img" \
-    -serial file:"$VM_DIR/$name.serial.log" \
-    -monitor none \
-    >"$VM_DIR/$name.log" 2>&1 &
-
-  local qpid=$!
-  log "QEMU PID=$qpid, logs at $VM_DIR/$name.log"
-  echo "$qpid"
-}
-
-wait_for_ssh() {
-  local ip="$1"
-  local attempts=0
-
-  while ! ssh $SSH_OPTS -i "$SSH_KEY" root@"$ip" true 2>/dev/null; do
-    log "  SSH attempt $attempts/60 on $ip..."
-    sleep 5
-    attempts=$((attempts + 1))
-    if [[ $attempts -gt 60 ]]; then
-      echo "Timeout waiting for SSH on $ip" >&2
-      return 1
-    fi
-  done
-}
-
-pull_images() {
+# Copy compose + build context into the VM, then pull registry images and build
+# local ones so nothing needs the network at deploy time.
+# --ignore-buildable: services with a build: section are built, not pulled — a
+# build-only image tag (e.g. a private GHCR ref) would otherwise fail pull with
+# "unauthorized".
+load_images() {
   local name="$1"
   local dir="$2"
   local ip="$3"
@@ -86,18 +25,20 @@ pull_images() {
 
   local attempts=0
   until ssh $SSH_OPTS -i "$SSH_KEY" root@"$ip" \
-    "cd /root/$name && docker compose pull"; do
+    "cd /root/$name && docker compose pull --ignore-buildable && docker compose build"; do
     attempts=$((attempts + 1))
     if [[ $attempts -ge 5 ]]; then
-      echo "docker compose pull failed after 5 attempts on $name" >&2
+      echo "image load failed after 5 attempts on $name" >&2
       return 1
     fi
-    log "Pull failed, retrying ($attempts/5)..."
+    log "Image load failed, retrying ($attempts/5)..."
     sleep 5
   done
 }
 
 # --- Main ---
+
+ensure_vm_nat
 
 declare -A PIDS
 declare -A IPS
@@ -111,6 +52,7 @@ for dir in "$PROJECTS_DIR"/*/; do
   mac=$(derive_mac "$name")
 
   log "Booting VM for: $name (ip=$ip mac=$mac)"
+  clone_disk "$name"
   pid=$(boot_vm "$name" "$ip" "$mac")
 
   PIDS[$name]=$pid
@@ -119,20 +61,46 @@ for dir in "$PROJECTS_DIR"/*/; do
   index=$((index + 1))
 done
 
-# Wait for SSH and pull images
+# Load images per VM, then power it off. Failures are isolated: log, skip state,
+# still power the VM down, keep going.
 > "$STATE_FILE"
+declare -a FAILED=()
 for name in "${!PIDS[@]}"; do
   dir="${NAMES_TO_DIRS[$name]}"
   ip="${IPS[$name]}"
+  pid="${PIDS[$name]}"
 
   log "Waiting for SSH: $name ($ip)"
-  wait_for_ssh "$ip"
+  if ! wait_for_ssh "$ip"; then
+    log "SSH never came up for $name — skipping"
+    FAILED+=("$name")
+    kill -9 "$pid" 2>/dev/null || true
+    continue
+  fi
   sleep 3
 
-  log "Pulling images: $name"
-  pull_images "$name" "$dir" "$ip"
+  log "Growing root fs on $name"
+  grow_root "$ip"
 
+  log "Setting MTU $VM_MTU on $name"
+  set_mtu "$ip"
+
+  log "Loading images: $name"
+  if ! load_images "$name" "$dir" "$ip"; then
+    log "Image load failed for $name — skipping (not added to state)"
+    FAILED+=("$name")
+    shutdown_vm "$name" "$ip" "$pid"
+    continue
+  fi
+
+  shutdown_vm "$name" "$ip" "$pid"
   echo "VM_IP_${name}=${ip}" >> "$STATE_FILE"
 done
 
-log "Build complete. State written to $STATE_FILE"
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+  log "Build finished with failures: ${FAILED[*]}"
+  log "State (successful VMs) written to $STATE_FILE"
+  exit 1
+fi
+
+log "Build complete. All VMs prepared and powered off. State at $STATE_FILE"

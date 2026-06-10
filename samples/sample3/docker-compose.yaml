@@ -1,7 +1,6 @@
 
 services:
   api:
-    image: ghcr.io/andrewrutherfoord/ethicalhackingctfchallenge:latest
     build:
       context: .
       dockerfile: Dockerfile

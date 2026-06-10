@@ -3,7 +3,7 @@ from pathlib import Path
 from app.config import get_settings
 from app.db.database import SessionLocal
 from app.db.models import SubmissionRecord, SubmissionStatus, ValidationRunRecord
-from app.models.challenge_yaml import ChallengeYaml, ValidationStep
+from app.models.challenge_yaml import ChallengeYaml
 from app.services.checks.models import StepOutcome
 from app.services.validator import ValidationOrchestrator
 

@@ -1,0 +1,25 @@
+name: "Bruteforcing to Download a database"
+description: "You can Bruteforce the website login, there you can find a hint to an exposed sqlite database, download it and the flag is in it"
+flag: "EH2025{33d4fc1c0d28b80a9a3b93f5c2523103fc06520374a231ca55bcf825aa4579f9}"
+difficulty: "medium"
+verify:
+  script: "verify.sh"
+  language: "bash"
+  timeout: 30
+  dependencies:
+    - sqlite3
+    - wget
+deployment:
+  remote_dir: "/root/sample4"
+services:
+  - name: "web"
+    protocol: "http"
+    host: "127.0.0.1"
+    port: 8000
+    path: "/"
+    expected_status: 200
+validation_steps:
+  - type: "container_running"
+  - type: "service_check"
+    service: "web"
+  - type: "verify_script"
