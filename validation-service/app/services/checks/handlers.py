@@ -34,7 +34,10 @@ class ValidationStepExecutor:
 
         if step.type == "service_check":
             service = self._resolve_service(challenge, step)
-            timeout = step.timeout or challenge.verify.timeout
+            # Fall back to verify's timeout when set, else a sane default — manual
+            # challenges have no verify config but still run service_check steps.
+            default_timeout = challenge.verify.timeout if challenge.verify else 30
+            timeout = step.timeout or default_timeout
             ok, details = self.service_checker.check_service(host, service, timeout=timeout)
             return StepOutcome(
                 step_type=f"{step.type}:{service.name or service.port}",

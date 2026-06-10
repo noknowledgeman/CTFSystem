@@ -49,10 +49,6 @@ ensure_vm_nat() {
   # Clamp TCP MSS to path MTU — fixes TLS resets when host egress MTU < 1500
   sudo iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null \
     || sudo iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
-
-  # Let docker-bridge containers (validation-service) reach the VMs on virbr0.
-  sudo iptables -C FORWARD -o virbr0 -j ACCEPT 2>/dev/null \
-    || sudo iptables -I FORWARD -o virbr0 -j ACCEPT
 }
 
 # Fresh COW disk backed by the base image, grown to VM_DISK_SIZE. Used by build.

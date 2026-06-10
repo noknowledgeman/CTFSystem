@@ -87,9 +87,11 @@ class ZipProcessor:
                 f"Expected one of: {', '.join(COMPOSE_FILENAMES)}"
             )
 
-        verify_path = root / challenge.verify.script
-        if not verify_path.exists():
-            raise ValueError(f"Verify script not found: {challenge.verify.script}")
+        # Manual-review challenges have no verify script; only check when present.
+        if challenge.verify is not None:
+            verify_path = root / challenge.verify.script
+            if not verify_path.exists():
+                raise ValueError(f"Verify script not found: {challenge.verify.script}")
 
         if not any((root / candidate).exists() for candidate in OPTIONAL_WRITEUPS):
             raise ValueError("A write-up file is required (writeup.md, README.md, or writeup.txt)")

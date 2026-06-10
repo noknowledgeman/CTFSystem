@@ -1,7 +1,7 @@
 name: "Picture verify"
 description: "The flag is in a picture at /flag.png"
 flag: "CTF{READ_THE_IMAGE}"
-difficulty: "easy"
+difficulty: "simple"
 deployment:
   remote_dir: "/root/sample5"
 services:

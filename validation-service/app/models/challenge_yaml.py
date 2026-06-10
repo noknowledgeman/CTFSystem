@@ -39,7 +39,9 @@ class ChallengeYaml(BaseModel):
     description: str = Field(min_length=1, max_length=4000)
     flag: str = Field(min_length=1, max_length=512)
     difficulty: Literal["simple", "medium", "difficult"]
-    verify: VerifyConfig
+    # Optional: manual-review challenges have no automated verify script.
+    # Required only when a `verify_script` validation step is present (enforced below).
+    verify: VerifyConfig | None = None
     deployment: DeploymentConfig = Field(default_factory=DeploymentConfig)
     services: list[ServiceConfig] = Field(min_length=1)
     validation_steps: list[ValidationStep] = Field(min_length=1)
@@ -67,4 +69,9 @@ class ChallengeYaml(BaseModel):
                     raise ValueError(f"service_check references unknown service `{step.service}`")
             if step.type == "manual_review" and (not step.instructions or not step.instructions.strip()):
                 raise ValueError("manual_review steps must define non-empty `instructions`")
+
+        # `verify` is optional, but a verify_script step needs a script to run.
+        has_verify_step = any(step.type == "verify_script" for step in self.validation_steps)
+        if has_verify_step and self.verify is None:
+            raise ValueError("a `verify_script` validation step requires a top-level `verify` config")
         return self

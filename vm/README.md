@@ -22,6 +22,8 @@ To run the vms you can then use:
 sudo ./deploy.sh
 ```
 
+This also places the map of group id (in this case sampleN) to ip addres automaticallyy into the .env so that you can then startup the validation service
+
 To then kill and clean up you can use:
 
 ```bash
