@@ -11,7 +11,6 @@ class ValidationResult(BaseModel):
     docker_ok: bool | None
     port_ok: bool | None
     verify_ok: bool | None
-    ctfd_synced: bool | None
     details: str
     created_at: datetime
     completed_at: datetime | None

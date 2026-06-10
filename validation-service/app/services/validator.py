@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.db.models import SubmissionRecord, SubmissionStatus, ValidationRunRecord
-from app.services.ctfd_client import CTFdClient
 from app.services.checks.handlers import ValidationStepExecutor
 from app.services.checks.models import StepOutcome
 from app.services.docker_checker import DockerChecker
@@ -29,7 +28,6 @@ class ValidationOrchestrator:
         self.docker_checker = DockerChecker(ssh=ssh)
         self.service_checker = ServiceChecker(ssh=ssh)
         self.script_runner = ScriptRunner(ssh=ssh, default_timeout=settings.default_verify_timeout)
-        self.ctfd_client = CTFdClient(base_url=settings.ctfd_base_url, api_token=settings.ctfd_api_token)
         self.step_executor = ValidationStepExecutor(
             ssh=self.ssh,
             docker_checker=self.docker_checker,
@@ -73,21 +71,16 @@ class ValidationOrchestrator:
                 outcome.ok for outcome in outcomes if outcome.step_type == "verify_script"
             ) if any(outcome.step_type == "verify_script" for outcome in outcomes) else None
 
-            synced = False
             required_ok = all(outcome.ok for outcome in outcomes if outcome.required)
             needs_manual_review = any(
                 outcome.required and outcome.step_type == "manual_review"
                 for outcome in outcomes
             )
-            # if required_ok and not needs_manual_review:
-            #     self.ctfd_client.ensure_challenge(challenge)
-            #     synced = True
-            # run.ctfd_synced = synced
-
+            
             if required_ok and needs_manual_review:
                 run.status = SubmissionStatus.NEEDS_REVIEW
             else:
-                all_ok = required_ok and synced
+                all_ok = required_ok
                 run.status = SubmissionStatus.VALID if all_ok else SubmissionStatus.INVALID
             submission.status = run.status
             run.details = "\n\n".join(

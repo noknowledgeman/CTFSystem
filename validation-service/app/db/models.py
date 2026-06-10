@@ -43,7 +43,6 @@ class ValidationRunRecord(Base):
     docker_ok: Mapped[bool | None] = mapped_column(nullable=True)
     port_ok: Mapped[bool | None] = mapped_column(nullable=True)
     verify_ok: Mapped[bool | None] = mapped_column(nullable=True)
-    ctfd_synced: Mapped[bool | None] = mapped_column(nullable=True)
     details: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

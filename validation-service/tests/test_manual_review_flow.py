@@ -3,7 +3,7 @@ from pathlib import Path
 from app.config import get_settings
 from app.db.database import SessionLocal
 from app.db.models import SubmissionRecord, SubmissionStatus, ValidationRunRecord
-from app.models.challenge_yaml import ChallengeYaml
+from app.models.challenge_yaml import ChallengeYaml, ValidationStep
 from app.services.checks.models import StepOutcome
 from app.services.validator import ValidationOrchestrator
 
@@ -18,14 +18,6 @@ class _AlwaysPassExecutor:
                 required=step.required,
             )
         return StepOutcome(step_type=step.type, ok=True, details="ok", required=step.required)
-
-
-class _TrackingCTFdClient:
-    def __init__(self):
-        self.calls = 0
-
-    def ensure_challenge(self, challenge: ChallengeYaml) -> None:
-        self.calls += 1
 
 
 def _manual_challenge() -> ChallengeYaml:
@@ -46,7 +38,7 @@ def _manual_challenge() -> ChallengeYaml:
     )
 
 
-def test_orchestrator_sets_needs_review_and_skips_ctfd_sync():
+def test_orchestrator_sets_needs_review():
     db = SessionLocal()
     submission = SubmissionRecord(
         group_id="group-1",
@@ -62,35 +54,17 @@ def test_orchestrator_sets_needs_review_and_skips_ctfd_sync():
     db.refresh(submission)
 
     orchestrator = ValidationOrchestrator(get_settings())
-    tracker = _TrackingCTFdClient()
-    orchestrator.step_executor = _AlwaysPassExecutor()
-    orchestrator.ctfd_client = tracker
-    orchestrator.load_challenge_from_disk = lambda _: _manual_challenge()
+    orchestrator.step_executor = _AlwaysPassExecutor()  # pyright: ignore[reportAttributeAccessIssue]
+    orchestrator.load_challenge_from_disk = lambda _: _manual_challenge()  # pyright: ignore[reportAttributeAccessIssue]
 
     run = orchestrator.validate_submission(db, submission)
     assert run.status == SubmissionStatus.NEEDS_REVIEW
-    assert run.ctfd_synced is False
     assert "Pending staff approval" in run.details
-    assert tracker.calls == 0
     db.close()
 
 
-def test_admin_review_approve_then_reject_paths(monkeypatch):
-    class DummyOrchestrator:
-        synced = 0
-
-        def __init__(self, _settings):
-            self.ctfd_client = self
-
-        def load_challenge_from_disk(self, _extracted_path: str):
-            return _manual_challenge()
-
-        def ensure_challenge(self, _challenge):
-            DummyOrchestrator.synced += 1
-
+def test_admin_review_approve_then_reject_paths():
     from app.routers import admin as admin_router
-
-    monkeypatch.setattr(admin_router, "ValidationOrchestrator", DummyOrchestrator)
 
     db = SessionLocal()
     approve_submission = SubmissionRecord(
@@ -144,7 +118,6 @@ def test_admin_review_approve_then_reject_paths(monkeypatch):
         SessionLocal(),
     )
     assert approve_response["status"] == SubmissionStatus.VALID.value
-    assert DummyOrchestrator.synced == 1
 
     reject_response = admin_router.review_submission(
         reject_submission_id,
