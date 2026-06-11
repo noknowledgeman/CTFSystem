@@ -63,9 +63,9 @@ def test_orchestrator_sets_needs_review_and_skips_ctfd_sync():
 
     orchestrator = ValidationOrchestrator(get_settings())
     tracker = _TrackingCTFdClient()
-    orchestrator.step_executor = _AlwaysPassExecutor()
-    orchestrator.ctfd_client = tracker
-    orchestrator.load_challenge_from_disk = lambda _: _manual_challenge()
+    orchestrator.step_executor = _AlwaysPassExecutor()  # pyright: ignore[reportAttributeAccessIssue]
+    orchestrator.ctfd_client = tracker  # pyright: ignore[reportAttributeAccessIssue]
+    orchestrator.load_challenge_from_disk = lambda _: _manual_challenge()  # pyright: ignore[reportAttributeAccessIssue]
 
     run = orchestrator.validate_submission(db, submission)
     assert run.status == SubmissionStatus.NEEDS_REVIEW

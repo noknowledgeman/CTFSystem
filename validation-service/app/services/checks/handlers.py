@@ -56,7 +56,7 @@ class ValidationStepExecutor:
                 ok = ok and step.expect_contains in output
             return StepOutcome(step_type=step.type, ok=ok, details=output, required=step.required)
 
-        if step.type == "verify_script":
+        if step.type == "verify_script" and challenge.verify:
             ok, output = self.script_runner.run_verify_script(
                 host=host,
                 local_root=local_root,
