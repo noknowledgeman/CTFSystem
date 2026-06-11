@@ -51,10 +51,10 @@ def test_step_executor_orders_and_executes_steps():
         }
     )
     executor = ValidationStepExecutor(
-        ssh=DummySSH(),  # pyright: ignore[reportArgumentType]
-        docker_checker=DummyDockerChecker(),  # pyright: ignore[reportArgumentType]
-        service_checker=DummyServiceChecker(),  # pyright: ignore[reportArgumentType]
-        script_runner=DummyScriptRunner(),  # pyright: ignore[reportArgumentType]
+        ssh=DummySSH(),
+        docker_checker=DummyDockerChecker(),
+        service_checker=DummyServiceChecker(),
+        script_runner=DummyScriptRunner(),
     )
     outcomes = [
         executor.execute("10.0.0.1", challenge, Path("."), step)

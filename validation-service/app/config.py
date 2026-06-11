@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     upload_dir: str = Field(alias="VAL_UPLOAD_DIR", default="/tmp/validation/uploads")
     extract_dir: str = Field(alias="VAL_EXTRACT_DIR", default="/tmp/validation/extracted")
 
+    ctfd_base_url: str = Field(alias="VAL_CTFD_BASE_URL", default="http://localhost:8000")
+    ctfd_api_token: str = Field(alias="VAL_CTFD_API_TOKEN", default="")
+
     ssh_private_key_path: str = Field(alias="VAL_SSH_PRIVATE_KEY_PATH", default="~/.ssh/id_ed25519")
     ssh_username: str = Field(alias="VAL_SSH_USERNAME", default="student")
     ssh_connect_timeout: int = Field(alias="VAL_SSH_CONNECT_TIMEOUT", default=15)
