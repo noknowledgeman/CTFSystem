@@ -38,7 +38,7 @@ class ValidationStepExecutor:
             # challenges have no verify config but still run service_check steps.
             default_timeout = challenge.verify.timeout if challenge.verify else 30
             timeout = step.timeout or default_timeout
-            ok, details = self.service_checker.check_service(host, service, timeout=timeout)
+            ok, details = self.service_checker.check_service(service, timeout=timeout)
             return StepOutcome(
                 step_type=f"{step.type}:{service.name or service.port}",
                 ok=ok,
@@ -58,7 +58,6 @@ class ValidationStepExecutor:
 
         if step.type == "verify_script" and challenge.verify:
             ok, output = self.script_runner.run_verify_script(
-                host=host,
                 local_root=local_root,
                 verify=challenge.verify,
             )

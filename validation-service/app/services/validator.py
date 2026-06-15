@@ -27,8 +27,8 @@ class ValidationOrchestrator:
         )
         self.ssh = ssh
         self.docker_checker = DockerChecker(ssh=ssh)
-        self.service_checker = ServiceChecker(ssh=ssh)
-        self.script_runner = ScriptRunner(ssh=ssh, default_timeout=settings.default_verify_timeout)
+        self.service_checker = ServiceChecker()
+        self.script_runner = ScriptRunner(default_timeout=settings.default_verify_timeout)
         self.ctfd_client = CTFdClient(base_url=settings.ctfd_base_url, api_token=settings.ctfd_api_token)
         self.step_executor = ValidationStepExecutor(
             ssh=self.ssh,

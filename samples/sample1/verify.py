@@ -2,7 +2,7 @@
 import requests
 
 
-TARGET = "http://127.0.0.1:8080/?page=../flag.txt"
+TARGET = "http://192.168.122.100:8080/?page=../flag.txt"
 EXPECTED = "CTF{s3cur3_y0ur_p4th5}"
 
 

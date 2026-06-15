@@ -7,13 +7,13 @@ deployment:
 services:
   - name: "web"
     protocol: "http"
-    host: "127.0.0.1"
+    host: "192.168.122.104"
     port: 8000
     path: "/"
     expected_status: 200
 validation_steps:
   - type: "manual_review"
-    instructions: "the flag is in an image at http://localhost:8000/flag.png"
+    instructions: "the flag is in an image at http://192.168.122.104:8000/flag.png"
     evidence_hint: "Its self explanatory"
   - type: "container_running"
   - type: "service_check"

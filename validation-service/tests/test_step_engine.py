@@ -23,12 +23,12 @@ class DummyDockerChecker:
 
 
 class DummyServiceChecker:
-    def check_service(self, host: str, service, timeout: int = 30):
+    def check_service(self, service, timeout: int = 30):
         return True, f"service {service.name or service.port} ok"
 
 
 class DummyScriptRunner:
-    def run_verify_script(self, host: str, local_root: Path, verify):
+    def run_verify_script(self, local_root: Path, verify):
         return True, ""
 
 

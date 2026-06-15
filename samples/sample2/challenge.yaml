@@ -12,13 +12,13 @@ deployment:
 services:
   - name: "web"
     protocol: "http"
-    host: "127.0.0.1"
+    host: "192.168.122.101"
     port: 80
     path: "/"
     expected_status: 200
   - name: "db"
     protocol: "tcp"
-    host: "127.0.0.1"
+    host: "192.168.122.101"
     port: 5432
 validation_steps:
   - type: "container_running"

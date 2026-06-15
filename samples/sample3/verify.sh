@@ -1,1 +1,1 @@
-curl -u admin:jhz-tfv1deg5betMAV http://localhost:8000/admin
+curl -u admin:jhz-tfv1deg5betMAV http://192.168.122.102:8000/admin
