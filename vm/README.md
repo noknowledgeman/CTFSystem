@@ -24,10 +24,11 @@ sudo ./deploy.sh
 
 This also places the map of group id (in this case sampleN) to ip addres automaticallyy into the .env so that you can then startup the validation service
 
-To then kill and clean up you can use:
+To then kill and clean up you can use either action independently:
 
 ```bash
-sudo ./cleanup.sh
+sudo ./cleanup.sh shutdown   # kill running QEMU VMs (leaves disks intact)
+sudo ./cleanup.sh images     # remove VM disk images (.qcow2)
 ```
 
 Furthermore, to run a specific vm you can do:
